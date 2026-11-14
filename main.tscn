@@ -19,6 +19,7 @@ const THROTTLE_CURVE = 6.0     # higher = more gentle at low throttle, punchier 
 var throttle := 0.0            # 0.0 to 1.0
 var power := 0.0               # throttle after the curve, 0.0 to 1.0
 var lane_changing := false     # set by level.gd during a lane change
+var slipping := false          # true = no engine power (set by level.gd after a cone)
 var cutscene := false          # true = ignore player input (used by cutscene.gd)
 var cutscene_throttle := 0.0   # throttle held while cutscene is true
 @onready var wheels: Array[Sprite2D] = [$FrontWheel, $RearWheel]
@@ -44,7 +45,7 @@ func _physics_process(delta: float) -> void:
 	power = (exp(THROTTLE_CURVE * throttle) - 1.0) / (exp(THROTTLE_CURVE) - 1.0)
 
 	# The car only drives forward (right). Throttle sets the engine power.
-	var accel := power * ENGINE_ACCEL
+	var accel := 0.0 if slipping else power * ENGINE_ACCEL
 	accel -= DRAG * velocity.x * absf(velocity.x)   # drag grows with speed squared
 	velocity.x += accel * delta
 	velocity.x = move_toward(velocity.x, 0.0, ROLL_RESIST * delta)

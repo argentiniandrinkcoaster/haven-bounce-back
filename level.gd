@@ -21,6 +21,18 @@ const BG_COLOR := Color("07ce7c")         # background color of the normal game
 const GRASS_PATH := "res://art/grass-durr.png"
 const GRASS_SCALE := 1.0                  # grass tile size (raise for bigger grass)
 const POINTS_PER_SECOND := 10.0           # points earned each second the car is moving
+const CONE_PATH := "res://art/cone.png"
+const CONE_SCALE := 0.5                   # cone size
+const CONE_CHANCE := 0.06                 # chance a cone spawns on each new road tile (6%)
+const CONE_PENALTY := 50.0                # points lost when you hit a cone
+const SLIP_TIME := 1.0                    # seconds the car has no grip or engine after a cone
+const SLIP_SPEED_KEEP := 0.6              # fraction of speed kept when you hit a cone
+const SLIP_HOP := 300.0                   # upward kick when the car slips
+const START_QUOTA := 100.0                # total points needed to pass the first quota
+const QUOTA_STEP := 120.0                 # how much the target grows after each quota you hit
+const QUOTA_TIME := 20.0                  # seconds you get to reach each quota
+const QUOTA_FAIL_DELAY := 0.8             # seconds before the fade when you miss a quota
+const CUTSCENE2_SCENE := "res://cutscene2.tscn"
 const SLIME_PATH := "res://art/slime.png"
 const SLIME_SCALE := 0.5                  # slime size (smaller = smaller slime)
 const SLIME_CHANCE := 0.03                # chance a slime spawns on each new road tile (0.03 = 3%)
@@ -42,12 +54,17 @@ var needle: TextureRect
 var needle_top: float
 var needle_bottom: float
 var slime_tex: Texture2D
-var slimes: Array[Area2D] = []
+var cone_tex: Texture2D
+var hazards: Array[Area2D] = []           # slimes and cones currently on the road
+var slipping := false
 var next_tile := 4                        # next road tile to roll a slime for (skips the start)
 var spawn_ahead := 8                      # how many tiles ahead of the car to spawn, set in _ready
 var hit := false
 var score := 0.0
 var score_label: Label
+var quota_label: Label
+var quota := START_QUOTA
+var quota_time_left := QUOTA_TIME
 var lane_tween: Tween
 var fade: ColorRect
 
@@ -170,6 +187,18 @@ func _ready() -> void:
 	score_label.add_theme_constant_override("outline_size", 6)
 	score_layer.add_child(score_label)
 
+	quota_label = Label.new()
+	quota_label.anchor_left = 1.0
+	quota_label.anchor_right = 1.0
+	quota_label.offset_left = -400.0
+	quota_label.offset_right = -HUD_PADDING
+	quota_label.offset_top = HUD_PADDING + 44.0
+	quota_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	quota_label.add_theme_font_size_override("font_size", 24)
+	quota_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	quota_label.add_theme_constant_override("outline_size", 6)
+	score_layer.add_child(quota_label)
+
 	# Fade overlay used after hitting a slime
 	var fade_layer := CanvasLayer.new()
 	fade_layer.layer = 100
@@ -181,6 +210,7 @@ func _ready() -> void:
 	fade_layer.add_child(fade)
 
 	slime_tex = load(SLIME_PATH) as Texture2D
+	cone_tex = load(CONE_PATH) as Texture2D
 	spawn_ahead = int(ceil(get_viewport().get_visible_rect().size.x / tile_w)) + 3
 
 
@@ -190,6 +220,18 @@ func _physics_process(delta: float) -> void:
 		score += POINTS_PER_SECOND * delta
 		score_label.text = "Points: %d" % int(score)
 
+	# Quota: reach the target points before the timer runs out
+	if not hit:
+		quota_time_left -= delta
+		if score >= quota:
+			quota += QUOTA_STEP
+			quota_time_left = QUOTA_TIME
+			quota_label.modulate = Color(0.4, 1.0, 0.4)
+			create_tween().tween_property(quota_label, "modulate", Color.WHITE, 0.6)
+		elif quota_time_left <= 0.0:
+			_quota_failed()
+		quota_label.text = "Quota: %d / %d   %ds" % [int(score), int(quota), int(ceil(maxf(quota_time_left, 0.0)))]
+
 	for g in grounds:
 		g.position.x = snappedf(player.position.x, tile_w)
 	grass.position.x = snappedf(player.position.x, grass_w)   # jumps by whole tiles, so it's invisible
@@ -197,18 +239,22 @@ func _physics_process(delta: float) -> void:
 	# Roll for slimes on road tiles ahead of the car
 	var front := int(floor(player.position.x / tile_w)) + spawn_ahead
 	while next_tile <= front:
-		if randf() < SLIME_CHANCE:
-			_spawn_slime(next_tile * tile_w + randf() * tile_w, randi() % 3)
+		var roll := randf()
+		var x := next_tile * tile_w + randf() * tile_w
+		if roll < SLIME_CHANCE:
+			_spawn_hazard(x, randi() % 3, slime_tex, SLIME_SCALE, _on_slime_entered)
+		elif roll < SLIME_CHANCE + CONE_CHANCE:
+			_spawn_hazard(x, randi() % 3, cone_tex, CONE_SCALE, _on_cone_entered)
 		next_tile += 1
 
 	# Remove slimes that are well behind the car
 	var behind := player.position.x - get_viewport().get_visible_rect().size.x - tile_w * 2.0
-	for sl in slimes.duplicate():
+	for sl in hazards.duplicate():
 		if sl.position.x < behind:
-			slimes.erase(sl)
+			hazards.erase(sl)
 			sl.queue_free()
 
-	if not changing and not hit and player.is_on_floor() and absf(player.velocity.x) > MIN_LANE_SPEED:
+	if not changing and not hit and not slipping and player.is_on_floor() and absf(player.velocity.x) > MIN_LANE_SPEED:
 		if Input.is_action_just_pressed("left"):
 			_change_lane(-1)
 		elif Input.is_action_just_pressed("right"):
@@ -239,10 +285,10 @@ func _change_lane(dir: int) -> void:
 	)
 
 
-func _spawn_slime(x: float, slime_lane: int) -> void:
-	var w := slime_tex.get_width() * SLIME_SCALE
-	var h := slime_tex.get_height() * SLIME_SCALE
-	var surface_y := GROUND_Y + (slime_lane - 1) * lane_spacing + HITBOX_OFFSET
+func _spawn_hazard(x: float, hazard_lane: int, tex: Texture2D, tex_scale: float, on_enter: Callable) -> void:
+	var w := tex.get_width() * tex_scale
+	var h := tex.get_height() * tex_scale
+	var surface_y := GROUND_Y + (hazard_lane - 1) * lane_spacing + HITBOX_OFFSET
 
 	var area := Area2D.new()
 	area.collision_layer = 0
@@ -250,8 +296,8 @@ func _spawn_slime(x: float, slime_lane: int) -> void:
 	area.position = Vector2(x, surface_y - h / 2.0)
 
 	var sprite := Sprite2D.new()
-	sprite.texture = slime_tex
-	sprite.scale = Vector2(SLIME_SCALE, SLIME_SCALE)
+	sprite.texture = tex
+	sprite.scale = Vector2(tex_scale, tex_scale)
 	area.add_child(sprite)
 
 	var shape := CollisionShape2D.new()
@@ -260,17 +306,58 @@ func _spawn_slime(x: float, slime_lane: int) -> void:
 	shape.shape = rect
 	area.add_child(shape)
 
-	area.body_entered.connect(_on_slime_entered.bind(slime_lane))
+	area.body_entered.connect(on_enter.bind(hazard_lane, area))
 	add_child(area)
 	move_child(area, 3)                        # behind the car, in front of the roads
-	slimes.append(area)
+	hazards.append(area)
 
 
-func _on_slime_entered(body: Node2D, slime_lane: int) -> void:
+func _on_slime_entered(body: Node2D, slime_lane: int, _area: Area2D) -> void:
 	if body != player or hit or slime_lane != lane:
 		return
 	hit = true
 	_slime_hit.call_deferred()
+
+
+func _on_cone_entered(body: Node2D, cone_lane: int, cone: Area2D) -> void:
+	if body != player or hit or slipping or cone_lane != lane:
+		return
+	slipping = true
+	_cone_hit.call_deferred(cone)
+
+
+func _cone_hit(cone: Area2D) -> void:
+	# Knock the cone away
+	hazards.erase(cone)
+	cone.monitoring = false
+	var knock := create_tween().set_parallel(true)
+	knock.tween_property(cone, "position", cone.position + Vector2(400, -300), 0.6)
+	knock.tween_property(cone, "rotation", 8.0, 0.6)
+	knock.tween_property(cone, "modulate:a", 0.0, 0.6)
+	knock.chain().tween_callback(cone.queue_free)
+
+	# Lose points (never below 0) and flash the counter red
+	score = maxf(score - CONE_PENALTY, 0.0)
+	score_label.text = "Points: %d" % int(score)
+	score_label.modulate = Color(1.0, 0.35, 0.35)
+	create_tween().tween_property(score_label, "modulate", Color.WHITE, 0.5)
+
+	# The car loses grip: slows down, hops, wobbles and has no engine for a moment
+	if lane_tween and lane_tween.is_valid():
+		lane_tween.kill()
+		changing = false
+		player.set("lane_changing", false)
+		player.collision_mask = 1 << (lane + 1)
+	player.set("slipping", true)
+	player.velocity.x *= SLIP_SPEED_KEEP
+	player.velocity.y = -SLIP_HOP
+	var wobble := create_tween().set_trans(Tween.TRANS_SINE)
+	wobble.tween_property(player, "rotation", -0.45, 0.3)
+	wobble.tween_property(player, "rotation", 0.0, 0.3)
+
+	await get_tree().create_timer(SLIP_TIME).timeout
+	player.set("slipping", false)
+	slipping = false
 
 
 func _slime_hit() -> void:
@@ -296,3 +383,20 @@ func _slime_hit() -> void:
 func _set_score(value: float) -> void:
 	score = value
 	score_label.text = "Points: %d" % int(score)
+
+
+func _quota_failed() -> void:
+	hit = true                                 # stops points, lane changes and further hits
+	quota_label.modulate = Color(1.0, 0.35, 0.35)
+	player.set("cutscene", true)               # no more player control
+	player.set("cutscene_throttle", 0.0)       # engine cuts out
+
+	await get_tree().create_timer(QUOTA_FAIL_DELAY).timeout
+	var tween := create_tween()
+	tween.tween_property(fade, "color:a", 1.0, HIT_FADE_TIME)
+	await tween.finished
+	if ResourceLoader.exists(CUTSCENE2_SCENE):
+		get_tree().change_scene_to_file(CUTSCENE2_SCENE)
+	else:
+		push_warning("cutscene2 scene not found at " + CUTSCENE2_SCENE)
+		get_tree().reload_current_scene()
