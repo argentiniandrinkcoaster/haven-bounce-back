@@ -1,5 +1,6 @@
 [gd_scene format=4 uid="uid://cncfd3g3g4vk5"]
 
+[ext_resource type="Texture2D" uid="uid://d2oaikqqc4m2a" path="res://art/dingus.png" id="1_0xm2m"]
 [ext_resource type="Texture2D" uid="uid://ctk5k7jqylhyv" path="res://icon.svg" id="2_h2yge"]
 
 [sub_resource type="GDScript" id="GDScript_0xm2m"]
@@ -32,7 +33,7 @@ func _physics_process(delta: float) -> void:
 "
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_rksnd"]
-size = Vector2(32, 56)
+size = Vector2(100, 56)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1bvp3"]
 texture = ExtResource("2_h2yge")
@@ -175,12 +176,12 @@ sources/0 = SubResource("TileSetAtlasSource_1bvp3")
 script = SubResource("GDScript_0xm2m")
 
 [node name="Sprite2D" type="Sprite2D" parent="CharacterBody2D" unique_id=244206187]
-position = Vector2(0, -1)
-scale = Vector2(0.2734375, 0.4609375)
-texture = ExtResource("2_h2yge")
+position = Vector2(10.20703, -1)
+scale = Vector2(0.982, 1)
+texture = ExtResource("1_0xm2m")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=1997199859]
-position = Vector2(0, -1)
+position = Vector2(9, -1)
 shape = SubResource("RectangleShape2D_rksnd")
 debug_color = Color(0.89235294, 0, 0.18982497, 0.41960785)
 
