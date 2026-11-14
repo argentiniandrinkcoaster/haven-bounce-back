@@ -81,7 +81,7 @@ shape = SubResource("RectangleShape2D_rksnd")
 debug_color = Color(0.89235294, 0, 0.18982497, 0.41960785)
 
 [node name="Camera2D" type="Camera2D" parent="CharacterBody2D" unique_id=840227223]
-offset = Vector2(50, 0)
+offset = Vector2(480, 0)
 ignore_rotation = false
 zoom = Vector2(0.6, 0.6)
 drag_horizontal_enabled = true

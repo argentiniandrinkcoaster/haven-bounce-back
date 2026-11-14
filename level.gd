@@ -22,8 +22,8 @@ const GRASS_PATH := "res://art/grass-durr.png"
 const GRASS_SCALE := 1.0                  # grass tile size (raise for bigger grass)
 const POINTS_PER_SECOND := 10.0           # points earned each second the car is moving
 const CONE_PATH := "res://art/cone.png"
-const CONE_SCALE := 0.5                   # cone size
-const CONE_CHANCE := 0.06                 # chance a cone spawns on each new road tile (6%)
+const CONE_SCALE := 0.7                   # cone size
+const CONE_CHANCE := 0.09                 # chance a cone spawns on each new road tile (6%)
 const CONE_PENALTY := 50.0                # points lost when you hit a cone
 const SLIP_TIME := 1.0                    # seconds the car has no grip or engine after a cone
 const SLIP_SPEED_KEEP := 0.6              # fraction of speed kept when you hit a cone
@@ -35,7 +35,7 @@ const QUOTA_FAIL_DELAY := 0.8             # seconds before the fade when you mis
 const CUTSCENE2_SCENE := "res://cutscene2.tscn"
 const SLIME_PATH := "res://art/slime.png"
 const SLIME_SCALE := 0.5                  # slime size (smaller = smaller slime)
-const SLIME_CHANCE := 0.03                # chance a slime spawns on each new road tile (0.03 = 3%)
+const SLIME_CHANCE := 0.05                # chance a slime spawns on each new road tile (0.03 = 3%)
 const SLIME_FLING := 1200.0               # upward speed the car is flung at
 const HIT_FADE_DELAY := 0.6               # seconds in the air before the fade starts
 const HIT_FADE_TIME := 0.8                # seconds the fade to black takes
