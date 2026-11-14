@@ -33,7 +33,7 @@ func _physics_process(delta: float) -> void:
 "
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_rksnd"]
-size = Vector2(100, 56)
+size = Vector2(84, 38)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1bvp3"]
 texture = ExtResource("2_h2yge")
@@ -177,11 +177,12 @@ script = SubResource("GDScript_0xm2m")
 
 [node name="Sprite2D" type="Sprite2D" parent="CharacterBody2D" unique_id=244206187]
 position = Vector2(10.20703, -1)
-scale = Vector2(0.982, 1)
+scale = Vector2(1.282, 1.305)
 texture = ExtResource("1_0xm2m")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=1997199859]
-position = Vector2(9, -1)
+position = Vector2(10, -2)
+scale = Vector2(1.282, 1.305)
 shape = SubResource("RectangleShape2D_rksnd")
 debug_color = Color(0.89235294, 0, 0.18982497, 0.41960785)
 
