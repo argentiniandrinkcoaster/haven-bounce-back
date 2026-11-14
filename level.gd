@@ -2,7 +2,7 @@ extends Node
 
 const TILE_PATH := "res://art/highway-block.png"   # your PNG
 const GROUND_Y := 400.0                   # y of the top surface of the ground
-const GROUND_SCALE := 1.0                 # scale of the ground image
+const GROUND_SCALE := 1.3                 # scale of the ground image
 const STRIP_TILES := 40                   # keep this even
 const SPAWN_HEIGHT := 150.0               # how far above the ground the player starts
 const HITBOX_OFFSET := 220.0   # px to move the ground hitbox down (negative = up)

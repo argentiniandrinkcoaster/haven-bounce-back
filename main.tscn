@@ -10,11 +10,11 @@ script/source = "extends CharacterBody2D
 
 const JUMP_VELOCITY = -400.0
 
-const ENGINE_ACCEL = 600.0   # px/s² at 100% throttle
-const DRAG = 0.0024          # air drag, sets top speed (~500 px/s at full throttle)
-const ROLL_RESIST = 40.0     # px/s² constant friction, so the car coasts to a stop
+const ENGINE_ACCEL = 60000.0   # px/s² at 100% throttle
+const DRAG = 0.0124          # air drag, sets top speed (~500 px/s at full throttle)
+const ROLL_RESIST = 120.0     # px/s² constant friction, so the car coasts to a stop
 const BRAKE_FORCE = 900.0    # px/s² when you press against your motion
-const THROTTLE_RATE = 0.6    # how fast the throttle moves per second (0.6 = 1.7s from 0 to 100%)
+const THROTTLE_RATE = 0.3    # how fast the throttle moves per second (0.6 = 1.7s from 0 to 100%)
 
 var throttle := 0.0          # 0.0 to 1.0
 var drive_dir := 1.0         # which way the engine pushes
@@ -84,6 +84,7 @@ debug_color = Color(0.89235294, 0, 0.18982497, 0.41960785)
 [node name="Camera2D" type="Camera2D" parent="CharacterBody2D" unique_id=840227223]
 offset = Vector2(50, 0)
 ignore_rotation = false
+zoom = Vector2(0.6, 0.6)
 drag_horizontal_enabled = true
 
 [node name="FrontWheel" type="Sprite2D" parent="CharacterBody2D" unique_id=389706273]
