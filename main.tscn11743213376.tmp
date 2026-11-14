@@ -1,0 +1,102 @@
+[gd_scene format=3 uid="uid://cncfd3g3g4vk5"]
+
+[ext_resource type="Texture2D" uid="uid://d2oaikqqc4m2a" path="res://art/dingus.png" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://28uf4ax0oy02" path="res://level.gd" id="1_h2yge"]
+[ext_resource type="Texture2D" uid="uid://c1osn7gn0ll28" path="res://art/wheel.png" id="3_h2yge"]
+
+[sub_resource type="GDScript" id="GDScript_0xm2m"]
+script/source = "extends CharacterBody2D
+
+
+const JUMP_VELOCITY = -400.0
+
+const ENGINE_ACCEL = 60000.0   # px/s² at 100% throttle
+const DRAG = 0.0124          # air drag, sets top speed (~500 px/s at full throttle)
+const ROLL_RESIST = 120.0     # px/s² constant friction, so the car coasts to a stop
+const BRAKE_FORCE = 900.0    # px/s² when you press against your motion
+const THROTTLE_RATE = 0.3    # how fast the throttle moves per second (0.6 = 1.7s from 0 to 100%)
+const THROTTLE_CURVE = 6.0   # 0 = linear, higher = more gentle at low throttle, punchier at high
+
+var throttle := 0.0          # 0.0 to 1.0
+var drive_dir := 1.0         # which way the engine pushes
+var power := 0.0             # throttle after the curve, 0.0 to 1.0
+@onready var wheels: Array[Sprite2D] = [$FrontWheel, $RearWheel]
+
+
+func _physics_process(delta: float) -> void:
+	# Add the gravity.
+	if not is_on_floor():
+		velocity += get_gravity() * delta
+
+	# Handle jump.
+	if Input.is_action_just_pressed(\"jump\") and is_on_floor():
+		velocity.y = JUMP_VELOCITY
+
+	# Get the input direction and handle the movement/deceleration.
+	# As good practice, you should replace UI actions with custom gameplay actions.
+	# Throttle is a lever: hold up/down to raise or lower it, it stays where you leave it.
+	throttle += Input.get_axis(\"throttle_down\", \"throttle_up\") * THROTTLE_RATE * delta
+	throttle = clampf(throttle, 0.0, 1.0)
+	power = (exp(THROTTLE_CURVE * throttle) - 1.0) / (exp(THROTTLE_CURVE) - 1.0)
+	print(\"throttle: \", int(throttle * 100), \"%  vel: \", int(velocity.x))
+
+	# Left/right picks drive direction, or brakes if you press against your motion.
+	var direction := Input.get_axis(\"left\", \"right\")
+	var braking := direction != 0.0 and absf(velocity.x) > 1.0 and signf(direction) != signf(velocity.x)
+
+	if braking:
+		velocity.x = move_toward(velocity.x, 0.0, BRAKE_FORCE * delta)
+	else:
+		if direction != 0.0:
+			drive_dir = signf(direction)
+		var accel := drive_dir * power * ENGINE_ACCEL
+		accel -= DRAG * velocity.x * absf(velocity.x)   # drag grows with speed squared
+		velocity.x += accel * delta
+		velocity.x = move_toward(velocity.x, 0.0, ROLL_RESIST * delta)
+
+	move_and_slide()
+	
+	# Roll the wheels: angle per second = speed / radius
+	for w in wheels:
+		var radius := w.texture.get_height() * absf(w.scale.y) / 2.0
+		w.rotation += velocity.x * delta / radius
+"
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_rksnd"]
+size = Vector2(86.3014, 35.893623)
+
+[node name="Node" type="Node" unique_id=463105898]
+script = ExtResource("1_h2yge")
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=2125429195]
+z_index = 1
+position = Vector2(-3, -256)
+script = SubResource("GDScript_0xm2m")
+
+[node name="Sprite2D" type="Sprite2D" parent="CharacterBody2D" unique_id=244206187]
+position = Vector2(10.20703, -1)
+scale = Vector2(0.782, 0.796)
+texture = ExtResource("1_0xm2m")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=1997199859]
+position = Vector2(4.7683716e-07, -6.5)
+scale = Vector2(5.282, 5.377)
+shape = SubResource("RectangleShape2D_rksnd")
+debug_color = Color(0.89235294, 0, 0.18982497, 0.41960785)
+
+[node name="Camera2D" type="Camera2D" parent="CharacterBody2D" unique_id=840227223]
+offset = Vector2(50, 0)
+ignore_rotation = false
+zoom = Vector2(0.6, 0.6)
+drag_horizontal_enabled = true
+
+[node name="FrontWheel" type="Sprite2D" parent="CharacterBody2D" unique_id=389706273]
+position = Vector2(165, 50)
+rotation = 1.1205014
+scale = Vector2(0.782, 0.782)
+texture = ExtResource("3_h2yge")
+
+[node name="RearWheel" type="Sprite2D" parent="CharacterBody2D" unique_id=484481656]
+position = Vector2(-155, 48)
+scale = Vector2(0.782, 0.782)
+texture = ExtResource("3_h2yge")
